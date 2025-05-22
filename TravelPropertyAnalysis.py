@@ -85,4 +85,5 @@ def get_data(driver):
             rating_element = driver.find_element(by=By.XPATH, value=f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[7]/span/span[3]")
             rating_value = float(getattr(rating_element, "text").split(" ")[0]) #(GeeksForGeeks, 2025)
         #select next page
+        #I have started work on this issue
 main()
