@@ -5,25 +5,13 @@
 #https://www.geeksforgeeks.org/find_element_by_xpath-driver-method-selenium-python/
 #https://www.geeksforgeeks.org/python-tkinter-entry-widget/
 
-'''
-Take user input of location to stay
-Web scrape AirBnb with search of this location
-Get characteristics of top properties
-    -Ratings (available from AirBnb list)
-    -Prices (available from AirBnb list)
-    -Amenities
-    -Number of guests
-    -Free cancellation? (available from AirBnb list)
-    -Number of reviews (available from AirBnb list)
-Create dataframe from collected data
-Analyse and create graphs
-'''
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
+from selenium.common.exceptions import TimeoutException
+import pandas as pd
 
 def main():
 
@@ -49,7 +37,7 @@ def main():
     driver.get("https://www.airbnb.co.uk")
     search_for_properties(driver, travel_location)
     #calls a subroutine that inspects elements of the web page and retrieves data from them to be analysed
-    get_data(driver)
+    property_data = get_data(driver, website_config)
     
 def user_input():
     #gets input from the user of the destination for their planned travel
@@ -76,14 +64,177 @@ def search_for_properties(driver, location):
     #executes the "click" functionality on the button element found above
     search_button_element.click()
 
-#a subroutine that inspects elements of the web page and retrieves data from them
-def get_data(driver):
+
+#a subroutine that inspects elements of the web and retrieves data from them
+def get_data(driver, website_config):
+    #creates the list object that will hold the dictionaries for the data of each property
     properties = []
 
+    #loops through the steps for the set number of pages
     for page in range(1, 4):
+        #loops through the steps for collecting data for each property
         for result_index in range(1, 18):
-            rating_element = driver.find_element(by=By.XPATH, value=f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[7]/span/span[3]")
-            rating_value = float(getattr(rating_element, "text").split(" ")[0]) #(GeeksForGeeks, 2025)
-        #select next page
-        #I have started work on this issue
+            #gets the following data for the current property
+            rating_value, number_of_ratings = get_ratings_and_reviews(driver, result_index)
+            price_per_night = get_price(driver, result_index)
+            #free_cancellation = get_cancellation_policy(driver, result_index)
+
+            '''
+            subroutine that causes the website to open a web page to a particular property to find more information
+            property_driver = enter_property(driver, result_index, website_config)
+            wifi = get_amenities(property_driver) #kitchen, pool, heating, tv
+            '''
+
+            #appends the collected data to the list of properties as a dictionary of the data for each property
+            properties.append({
+                "average_rating": rating_value,
+                "number_of_ratings": number_of_ratings,
+                "price_per_night": price_per_night,
+                #"free_cancellation": free_cancellation
+                #"wifi": wifi
+            })
+        #selects next page button to show more property listings
+        next_page(driver)
+    return properties
+
+#function that causes the program to wait until a specified element has been loaded on the web page before trying to access it to prevent an error
+def get_element(driver, path):
+    #creates a WebDriverWait
+    wait = WebDriverWait(driver, 5)
+
+    #form of error-handling - if element is not found, error is caught and moves onto the next element
+    try:
+        #finds the element on the web page but waits until it is located before trying to assign it to a variable (element)
+        element = wait.until(expected_conditions.visibility_of_element_located((By.XPATH, path)))
+    except TimeoutException:
+        #timeout may occur if no element is found with this XPath and so no value is returned
+        return ""
+    #WebElement value is returned if found
+    return element
+
+#subroutine that takes the driver variable and loop index as parameters and uses them to get and return data about ratings and reviews
+def get_ratings_and_reviews(driver, result_index):
+    
+    #the XPath for the element containing the average rating and number of reviews
+    path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[7]/span/span[3]"
+    #the element containing the average rating and number of reviews is found and assigned after waiting for it to be located (calls function above)
+    rating_element = get_element(driver, path)
+    
+    #gets the text value of the element using getattr and splits the string containing the average rating and number of reviews and assigns each part to a different variable
+    string_rating_value, string_number_of_ratings = try_rating_review(rating_element)
+    
+    #checks if string_rating_value has a meaningful value
+    if string_rating_value != "":
+        #casts the average rating string to a float
+        rating_value = float(string_rating_value)
+    else:
+        #if there is no value, rating_value is assigned no value to prevent error
+        rating_value = string_rating_value
+    
+    #checks if string_number_of_ratings has a meaningful value
+    if string_number_of_ratings != "":
+        #removes the brackets from either side of the number of ratings string
+        string_number_of_ratings = string_number_of_ratings.split("(")[1]
+        string_number_of_ratings = string_number_of_ratings.split(")")[0]
+        #casts the number of ratings string to an integer
+        number_of_ratings = int(string_number_of_ratings)
+    else:
+        #if there is no value, number_of_ratings is assigned no value to prevent error
+        number_of_ratings = string_number_of_ratings
+
+    #returns the values so they can be stored
+    return rating_value, number_of_ratings
+
+def try_rating_review(rating_element):
+
+    try:
+        #gets the text value of the element found
+        rating_element_value = getattr(rating_element, "text") #(GeeksForGeeks, 2025)
+    except AttributeError:
+        #some properties may not have a rating value if there are less than 3 reviews
+        rating_element_value = ""
+
+    #attempts to split the text into 2 strings (1 for average rating, 1 for number of reviews) - in some cases this is not possible, such as when the rating is replaced with "New" on the website
+    try:
+        rating, num_review = rating_element_value.split(" ")
+    except ValueError:
+        #a ValueError is caught and empty values returned
+        return "", ""
+    
+    return rating, num_review
+
+#function that gets the price per night of property with index result_index using the web driver and returns this price
+def get_price(driver, result_index):
+    #the XPath for the element containing the price per night
+    path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[6]/div[2]/div/div/span[1]"
+    #calls a function to get the element after waiting for it to be loaded
+    price_element = get_element(driver, path)
+
+    #gets the price text value of the price_element
+    string_price_value = getattr(price_element, "text")
+    #removes the extra chars of the string until just the number of the price in £ remains
+    string_price_value = string_price_value.split(" ")[0]
+    string_price_value = string_price_value.split("£")[1]
+    #casts the string price value to a float
+    price_value = float(string_price_value)
+
+    return price_value
+
+'''
+def get_cancellation_policy(driver, result_index):
+    #the XPath for the element containing the cancellation policy
+    path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[4]/span/span[2]/span"
+    #gets the element containing the cancellation policy after waiting for it to load
+    policy_element = get_element(driver, path)
+
+    #checks if the cancellation policy element exists for the property
+    if policy_element != "":
+        #gets the text value of the cancellation policy using getattr function
+        policy_value = getattr(policy_element, "text")
+        #determines the cancellation policy and returns the appropriate value
+        if policy_value == "Free cancellation": 
+            return "yes"
+        else: 
+            return "no"
+    else:
+        return "no"
+'''
+
+def enter_property(driver, result_index, website_config):
+    #the path for the current property element as a whole (element that is clicked on to view all property details)
+    path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/a"
+    #gets element from path above
+    property_element = get_element(driver, path)
+    #gets the URL of the current property information page
+    property_url = property_element.get_attribute("href")
+
+    #sets up another web driver for the current property
+    property_driver = webdriver.Edge(options=website_config)
+    #navigates to the URL found above of the current property
+    property_driver.get(property_url)
+    return property_driver
+
+'''
+def get_amenities(property_driver):
+    path = "/html/body/div[5]/div/div/div[1]/div/div/div[1]/div/div/div/div[1]/main/div/div[1]/div[3]/div/div[1]/div/div[6]/div/div[2]/section/div[3]/button"
+    amenities_button = get_element(property_driver, path)
+    
+    amenities_element = get_element(property_driver, path) 
+    amenities = getattr(amenities_element, "text")
+    if "wifi" in amenities.lower():
+        wifi = "yes"
+    else:
+        wifi = "no"
+
+    return wifi
+'''
+
+def next_page(driver):
+    #the full XPath of the next page button
+    element_path = "/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[3]/div/div/div/nav/div/a[5]"
+    #gets the element of the next page button and assigns it to a variable
+    next_page_button = get_element(driver, element_path)
+    #simulates a click on the next page button to cause the next page to be displayed
+    next_page_button.click()
+
 main()
