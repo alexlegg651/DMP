@@ -4,6 +4,7 @@
 #https://www.selenium.dev/documentation/webdriver/getting_started/first_script/
 #https://www.geeksforgeeks.org/find_element_by_xpath-driver-method-selenium-python/
 #https://www.geeksforgeeks.org/python-tkinter-entry-widget/
+#https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html & AI 29/05/2025
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -36,8 +37,11 @@ def main():
     #navigates to the stated URL in the Edge window
     driver.get("https://www.airbnb.co.uk")
     search_for_properties(driver, travel_location)
-    #calls a subroutine that inspects elements of the web page and retrieves data from them to be analysed
+    #calls a function that inspects elements of the web page and retrieves data from them to be analysed
     property_data = get_data(driver, website_config)
+
+    #calls a subroutine that saves the data as a dataframe into an excel file
+    data_file = save_data(property_data, travel_location)
     
 def user_input():
     #gets input from the user of the destination for their planned travel
@@ -67,17 +71,18 @@ def search_for_properties(driver, location):
 
 #a subroutine that inspects elements of the web and retrieves data from them
 def get_data(driver, website_config):
-    #creates the list object that will hold the dictionaries for the data of each property
-    properties = []
+    #creates empty lists for each column heading of the dataframe (each different type of data of each property)
+    average_rating = []
+    number_of_ratings = [] 
+    price_per_night = []
 
     #loops through the steps for the set number of pages
     for page in range(1, 4):
         #loops through the steps for collecting data for each property
         for result_index in range(1, 18):
             #gets the following data for the current property
-            rating_value, number_of_ratings = get_ratings_and_reviews(driver, result_index)
-            price_per_night = get_price(driver, result_index)
-            #free_cancellation = get_cancellation_policy(driver, result_index)
+            rating_value, rating_num = get_ratings_and_reviews(driver, result_index)
+            price = get_price(driver, result_index)
 
             '''
             subroutine that causes the website to open a web page to a particular property to find more information
@@ -85,17 +90,32 @@ def get_data(driver, website_config):
             wifi = get_amenities(property_driver) #kitchen, pool, heating, tv
             '''
 
-            #appends the collected data to the list of properties as a dictionary of the data for each property
-            properties.append({
-                "average_rating": rating_value,
-                "number_of_ratings": number_of_ratings,
-                "price_per_night": price_per_night,
-                #"free_cancellation": free_cancellation
-                #"wifi": wifi
-            })
+            #appends the collected data to lists of the data for each type of data for each property
+            average_rating.append(rating_value)
+            number_of_ratings.append(rating_num)
+            price_per_night.append(price)
+
         #selects next page button to show more property listings
         next_page(driver)
+
+    #stores the data collected from the Airbnb website stored in lists into a dictionary of lists ready to be converted to a dataframe
+    properties = {
+        "average_rating": average_rating,
+        "number_of_ratings": number_of_ratings,
+        "price_per_night": price_per_night,
+    }
     return properties
+
+def save_data(data, travel_location):
+    #creates a dataframe out of the data retrieved that was stored in a dictionary of lists
+    property_df = pd.DataFrame(data) #reference
+
+    #generates a filename based off of the location that the user input
+    filename = f"{travel_location}_properties.xlsx"
+    #exports the dataframe to an excel file of the filename generated
+    property_df.to_excel(filename, sheet_name=f"{travel_location}_properties", index=True)
+
+
 
 #function that causes the program to wait until a specified element has been loaded on the web page before trying to access it to prevent an error
 def get_element(driver, path):
