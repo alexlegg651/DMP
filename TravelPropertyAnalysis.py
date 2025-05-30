@@ -1,11 +1,3 @@
-#https://www.geeksforgeeks.org/interacting-with-webpage-selenium-python/
-#https://www.geeksforgeeks.org/python-web-scraping-tutorial/
-#https://www.geeksforgeeks.org/selenium-testing-without-browser/
-#https://www.selenium.dev/documentation/webdriver/getting_started/first_script/
-#https://www.geeksforgeeks.org/find_element_by_xpath-driver-method-selenium-python/
-#https://www.geeksforgeeks.org/python-tkinter-entry-widget/
-#https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html & AI 29/05/2025
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.options import Options
@@ -26,7 +18,7 @@ def main():
     website_config.add_experimental_option("detach", True)
 
     #prevents the web browser GUI from appearing to the user
-    #website_config.add_argument("--headless")
+    website_config.add_argument("--headless") #(Meshi, 2020)
 
     #website_config.add_experimental_option("excludeSwitches", ["enable-logging"])
     #website_config.add_argument("--disable-gpu")
@@ -40,8 +32,10 @@ def main():
     #calls a function that inspects elements of the web page and retrieves data from them to be analysed
     property_data = get_data(driver, website_config)
 
-    #calls a subroutine that saves the data as a dataframe into an excel file
+    #calls a function that saves the data as a dataframe into an excel file
     data_file = save_data(property_data, travel_location)
+    #calls a function reads the contents of the file containing the data into a dataframe
+    property_df = load_data(data_file)
     
 def user_input():
     #gets input from the user of the destination for their planned travel
@@ -53,17 +47,17 @@ def user_input():
 def search_for_properties(driver, location):
 
     #finds the destination search element by its element ID (found by manually inspecting the element)
-    dest_search_element = driver.find_element(by=By.ID, value="bigsearch-query-location-input")
+    dest_search_element = driver.find_element(by=By.ID, value="bigsearch-query-location-input") #(GeeksForGeeks, 2024a)
 
     #due to interaction with element, the page goes through changes so must wait before attempting to interact with the element again to prevent interaction with element while it is still stale
     wait = WebDriverWait(driver, 5)
-    dest_search_element = wait.until(expected_conditions.visibility_of_element_located((By.ID, "bigsearch-query-location-input")))
+    dest_search_element = wait.until(expected_conditions.visibility_of_element_located((By.ID, "bigsearch-query-location-input"))) #(Microsoft Copilot, 2025)
 
     #enters the location into the search element found on the web page
     dest_search_element.send_keys(location)
 
     #finds the search button element using its XPATH instead of ID (doesn't have an ID) - XPATH syntax found through use of Microsoft Copilot AI
-    search_button_element = driver.find_element(by=By.XPATH, value="//*[contains(@data-testid, 'structured-search-input-search-button')]")
+    search_button_element = driver.find_element(by=By.XPATH, value="//*[contains(@data-testid, 'structured-search-input-search-button')]") #(GeeksForGeeks, 2024b)
     
     #executes the "click" functionality on the button element found above
     search_button_element.click()
@@ -108,14 +102,17 @@ def get_data(driver, website_config):
 
 def save_data(data, travel_location):
     #creates a dataframe out of the data retrieved that was stored in a dictionary of lists
-    property_df = pd.DataFrame(data) #reference
+    property_df = pd.DataFrame(data) #(pandas, n.d.)
 
     #generates a filename based off of the location that the user input
     filename = f"{travel_location}_properties.xlsx"
     #exports the dataframe to an excel file of the filename generated
     property_df.to_excel(filename, sheet_name=f"{travel_location}_properties", index=True)
+    return filename
 
-
+def load_data(data_file):
+    df = pd.read_excel(data_file)
+    return df
 
 #function that causes the program to wait until a specified element has been loaded on the web page before trying to access it to prevent an error
 def get_element(driver, path):
