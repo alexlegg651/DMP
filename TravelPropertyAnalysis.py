@@ -71,6 +71,7 @@ def search_for_properties(driver, location):
 #a subroutine that inspects elements of the web and retrieves data from them
 def get_data(driver, website_config):
     #creates empty lists for each column heading of the dataframe (each different type of data of each property)
+    name = []
     average_rating = []
     number_of_ratings = [] 
     price_per_night = []
@@ -80,6 +81,7 @@ def get_data(driver, website_config):
         #loops through the steps for collecting data for each property
         for result_index in range(1, 18):
             #gets the following data for the current property
+            name_value = get_property_name(driver, result_index)
             rating_value, rating_num = get_ratings_and_reviews(driver, result_index)
             price = get_price(driver, result_index)
 
@@ -90,6 +92,7 @@ def get_data(driver, website_config):
             '''
 
             #appends the collected data to lists of the data for each type of data for each property
+            name.append(name_value)
             average_rating.append(rating_value)
             number_of_ratings.append(rating_num)
             price_per_night.append(price)
@@ -99,6 +102,7 @@ def get_data(driver, website_config):
 
     #stores the data collected from the Airbnb website stored in lists into a dictionary of lists ready to be converted to a dataframe
     properties = {
+        "name": name,
         "average_rating": average_rating,
         "number_of_ratings": number_of_ratings,
         "price_per_night": price_per_night,
@@ -112,7 +116,7 @@ def save_data(data, travel_location):
     #generates a filename based off of the location that the user input
     filename = f"{travel_location}_properties.xlsx"
     #exports the dataframe to an excel file of the filename generated
-    property_df.to_excel(filename, sheet_name=f"{travel_location}_properties", index=True)
+    property_df.to_excel(filename, sheet_name=f"{travel_location}_properties", index=False)
     return filename
 
 #function that reads data from an excel file and returns a dataframe produced from this data
@@ -152,7 +156,20 @@ def get_element(driver, path):
     #WebElement value is returned if found
     return element
 
-#subroutine that takes the driver variable and loop index as parameters and uses them to get and return data about ratings and reviews
+#function that takes the driver variable and loop index as parameters then uses them to get the name of the current property and return it
+def get_property_name(driver, result_index):
+
+    #the XPath of the element containing the name of the property
+    path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[3]/span"
+    #the element containing the name value of the property is found and assigned to a variable after waiting for it to be located (calls function to do this)
+    name_element = get_element(driver, path)
+
+    #gets the text value of the name element using the getattr Python function
+    name_value = getattr(name_element, "text")
+    #returns the name value of the property so it can be stored
+    return name_value
+
+#function that takes the driver variable and loop index as parameters and uses them to get and return data about ratings and reviews
 def get_ratings_and_reviews(driver, result_index):
     
     #the XPath for the element containing the average rating and number of reviews
@@ -160,7 +177,7 @@ def get_ratings_and_reviews(driver, result_index):
     #the element containing the average rating and number of reviews is found and assigned after waiting for it to be located (calls function above)
     rating_element = get_element(driver, path)
     
-    #gets the text value of the element using getattr and splits the string containing the average rating and number of reviews and assigns each part to a different variable
+    #calls a function to get the text value of the element if it exists and splits the string containing the average rating and number of reviews and assigns each part to a different variable
     string_rating_value, string_number_of_ratings = try_rating_review(rating_element)
     
     #checks if string_rating_value has a meaningful value
