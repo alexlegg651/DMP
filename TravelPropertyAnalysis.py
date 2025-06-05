@@ -5,9 +5,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.common.exceptions import TimeoutException
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 def main():
-
+    '''
     #gets details about the planned travel from the user
     travel_location = user_input()
 
@@ -31,11 +33,14 @@ def main():
     search_for_properties(driver, travel_location)
     #calls a function that inspects elements of the web page and retrieves data from them to be analysed
     property_data = get_data(driver, website_config)
-
+    '''
     #calls a function that saves the data as a dataframe into an excel file
-    data_file = save_data(property_data, travel_location)
+    data_file = "manchester_properties.xlsx"#save_data(property_data, travel_location)
+    travel_location = "Manchester"
     #calls a function reads the contents of the file containing the data into a dataframe
     property_df = load_data(data_file)
+    #calls a subroutine to provide analysis of the loaded property data
+    analyse_data(property_df, travel_location)
     
 def user_input():
     #gets input from the user of the destination for their planned travel
@@ -102,7 +107,7 @@ def get_data(driver, website_config):
 
 def save_data(data, travel_location):
     #creates a dataframe out of the data retrieved that was stored in a dictionary of lists
-    property_df = pd.DataFrame(data) #(pandas, n.d.)
+    property_df = pd.DataFrame(data) #(pandas, n.d. -b)
 
     #generates a filename based off of the location that the user input
     filename = f"{travel_location}_properties.xlsx"
@@ -110,9 +115,27 @@ def save_data(data, travel_location):
     property_df.to_excel(filename, sheet_name=f"{travel_location}_properties", index=True)
     return filename
 
+#function that reads data from an excel file and returns a dataframe produced from this data
 def load_data(data_file):
+    #reads data from the excel file with filename data_file
     df = pd.read_excel(data_file)
     return df
+
+#subroutine that initialises different visualisations of the data provided
+def analyse_data(property_df, travel_location):
+    #data munging - fills in null values (empty values) with 0
+    property_df.fillna(0, inplace=True)
+
+    figure, graph = plt.subplots(2, 2, figsize=(10, 8)) #(Bing Writer, 2025)
+
+    #calls various functions to create and return various graphs
+    graph[0, 0] = rating_bar(property_df, travel_location, graph)
+    graph[0, 1] = price_bar(property_df, travel_location, graph)
+    graph[1, 0] = rating_num_pie(property_df, travel_location, graph)
+
+    plt.tight_layout()
+
+    plt.show()
 
 #function that causes the program to wait until a specified element has been loaded on the web page before trying to access it to prevent an error
 def get_element(driver, path):
@@ -253,5 +276,71 @@ def next_page(driver):
     next_page_button = get_element(driver, element_path)
     #simulates a click on the next page button to cause the next page to be displayed
     next_page_button.click()
+
+
+def rating_bar(property_df, travel_location, graph):
+    #gets the data from column 0 and assigns it to a list variable
+    properties = property_df.iloc[:, 0] #(pandas, n.d. -a)
+    #gets the data from the column called "average_rating" and assigns it to the ratings variable as a list
+    ratings = property_df["average_rating"]
+
+    #converts the lists of data to numpy arrays so they can be used to generate visualisations
+    x = np.array(properties)
+    y = np.array(ratings)
+    #uses the numpy arrays to plot a bar chart
+    graph[0,0].bar(x, y, color="red")
+
+    #sets various visual features for the bar chart
+    graph[0,0].set_title(f"Average ratings of each property in {travel_location}")
+    graph[0,0].set_xlabel("Property")
+    graph[0,0].set_ylabel("Average rating")
+
+    #returns the bar chart
+    return graph
+
+def price_bar(property_df, travel_location, graph):
+    #gets the data from column 0 and assigns it to a list variable
+    properties = property_df.iloc[:, 0]
+    #gets the data from the column called "price_per_night" and assigns it to the ratings variable as a list
+    prices = property_df["price_per_night"]
+
+    #converts the lists of data to numpy arrays so they can be used to generate visualisations
+    x = np.array(properties)
+    y = np.array(prices)
+
+    #uses the numpy arrays to plot a bar chart
+    graph[0,1].bar(x, y, color="green")
+    #sets various visual features for the bar chart
+    graph[0,1].set_title(f"Prices of properties in {travel_location}")
+    graph[0,1].set_xlabel("Property")
+    graph[0,1].set_ylabel("Price per night (£)")
+    #returns the bar chart
+    return graph
+
+
+def rating_num_pie(property_df, travel_location, graph):
+    #gets the data from column 0 and assigns it to a list variable
+    properties = property_df.iloc[0:10+1, 0]
+    #gets the data from the column called "number_of_ratings" and assigns it to the ratings variable as a list
+    rating_counts = property_df.loc[0:10, "number_of_ratings"]
+
+    #creates a numpy array for the number of ratings
+    x = np.array(rating_counts)
+
+    #creates an empty list to store the labels
+    label = []
+    #iterates through each property and appends a tuple of the property index and number of ratings to the label list
+    for i in range(0, len(properties)):
+        label.append((properties[i], rating_counts[i]))
+
+    #creates a pie chart from this data
+    graph[1,0].pie(x, labels=label)
+    graph[1,0].set_title("Number of reviews of each property")
+    
+    return graph
+
+    
+
+
 
 main()
