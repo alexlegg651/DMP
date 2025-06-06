@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def main():
-    '''
+
     #gets details about the planned travel from the user
     travel_location = user_input()
 
@@ -22,10 +22,6 @@ def main():
     #prevents the web browser GUI from appearing to the user
     website_config.add_argument("--headless") #(Meshi, 2020)
 
-    #website_config.add_experimental_option("excludeSwitches", ["enable-logging"])
-    #website_config.add_argument("--disable-gpu")
-    #website_config.add_argument("--no-sandbox")
-
     #sets up webdriver and opens an empty Edge window and assigns this to the 'driver' webdriver variable
     driver = webdriver.Edge(options=website_config) #(Selenium, 2025)
     #navigates to the stated URL in the Edge window
@@ -33,10 +29,10 @@ def main():
     search_for_properties(driver, travel_location)
     #calls a function that inspects elements of the web page and retrieves data from them to be analysed
     property_data = get_data(driver, website_config)
-    '''
+    
     #calls a function that saves the data as a dataframe into an excel file
-    data_file = "manchester_properties.xlsx"#save_data(property_data, travel_location)
-    travel_location = "Manchester"
+    data_file = save_data(property_data, travel_location)
+    
     #calls a function reads the contents of the file containing the data into a dataframe
     property_df = load_data(data_file)
     #calls a subroutine to provide analysis of the loaded property data
@@ -77,19 +73,13 @@ def get_data(driver, website_config):
     price_per_night = []
 
     #loops through the steps for the set number of pages
-    for page in range(1, 4):
+    for page in range(1, 3):
         #loops through the steps for collecting data for each property
         for result_index in range(1, 18):
             #gets the following data for the current property
             name_value = get_property_name(driver, result_index)
             rating_value, rating_num = get_ratings_and_reviews(driver, result_index)
             price = get_price(driver, result_index)
-
-            '''
-            subroutine that causes the website to open a web page to a particular property to find more information
-            property_driver = enter_property(driver, result_index, website_config)
-            wifi = get_amenities(property_driver) #kitchen, pool, heating, tv
-            '''
 
             #appends the collected data to lists of the data for each type of data for each property
             name.append(name_value)
@@ -130,12 +120,16 @@ def analyse_data(property_df, travel_location):
     #data munging - fills in null values (empty values) with 0
     property_df.fillna(0, inplace=True)
 
-    figure, graph = plt.subplots(2, 2, figsize=(10, 8)) #(Bing Writer, 2025)
+    #prints basic statistical values from the dataframe to the user
+    print(property_df.describe())
+
+    #sets up 3 areas in a single window for individual graphs to be displayed using matplotlib library
+    figure, graph = plt.subplots(1, 3, figsize=(16, 4)) #(Bing Writer, 2025)
 
     #calls various functions to create and return various graphs
-    graph[0, 0] = rating_bar(property_df, travel_location, graph)
-    graph[0, 1] = price_bar(property_df, travel_location, graph)
-    graph[1, 0] = rating_num_pie(property_df, travel_location, graph)
+    graph[0] = rating_bar(property_df, travel_location, graph[0])
+    graph[1] = price_bar(property_df, travel_location, graph[1])
+    graph[2] = rating_num_pie(property_df, travel_location, graph[2])
 
     plt.tight_layout()
 
@@ -161,13 +155,28 @@ def get_property_name(driver, result_index):
 
     #the XPath of the element containing the name of the property
     path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[3]/span"
-    #the element containing the name value of the property is found and assigned to a variable after waiting for it to be located (calls function to do this)
-    name_element = get_element(driver, path)
 
-    #gets the text value of the name element using the getattr Python function
-    name_value = getattr(name_element, "text")
+    #uses a loop that continues trying to find the element if it is not initially found
+    name_element = ''
+    attempts = 0
+    while attempts < 3 and name_element == '':
+        #the element containing the name value of the property is found and assigned to a variable after waiting for it to be located (calls function to do this)
+        name_element = get_element(driver, path)
+        attempts += 1
+        
+    if name_element != '':
+        #gets the text value of the name element using the getattr Python function
+        name_value = getattr(name_element, "text")
+
+    #cuts the property name down to a finite number of characters to ensure it is readable in hte visualisations but still useful
+    short_name = ""
+    for char in range(0, len(name_value)):
+        if char < 16:
+            short_name += name_value[char]
+    short_name += "..."
+
     #returns the name value of the property so it can be stored
-    return name_value
+    return short_name
 
 #function that takes the driver variable and loop index as parameters and uses them to get and return data about ratings and reviews
 def get_ratings_and_reviews(driver, result_index):
@@ -237,55 +246,6 @@ def get_price(driver, result_index):
 
     return price_value
 
-'''
-def get_cancellation_policy(driver, result_index):
-    #the XPath for the element containing the cancellation policy
-    path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[4]/span/span[2]/span"
-    #gets the element containing the cancellation policy after waiting for it to load
-    policy_element = get_element(driver, path)
-
-    #checks if the cancellation policy element exists for the property
-    if policy_element != "":
-        #gets the text value of the cancellation policy using getattr function
-        policy_value = getattr(policy_element, "text")
-        #determines the cancellation policy and returns the appropriate value
-        if policy_value == "Free cancellation": 
-            return "yes"
-        else: 
-            return "no"
-    else:
-        return "no"
-'''
-
-def enter_property(driver, result_index, website_config):
-    #the path for the current property element as a whole (element that is clicked on to view all property details)
-    path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/a"
-    #gets element from path above
-    property_element = get_element(driver, path)
-    #gets the URL of the current property information page
-    property_url = property_element.get_attribute("href")
-
-    #sets up another web driver for the current property
-    property_driver = webdriver.Edge(options=website_config)
-    #navigates to the URL found above of the current property
-    property_driver.get(property_url)
-    return property_driver
-
-'''
-def get_amenities(property_driver):
-    path = "/html/body/div[5]/div/div/div[1]/div/div/div[1]/div/div/div/div[1]/main/div/div[1]/div[3]/div/div[1]/div/div[6]/div/div[2]/section/div[3]/button"
-    amenities_button = get_element(property_driver, path)
-    
-    amenities_element = get_element(property_driver, path) 
-    amenities = getattr(amenities_element, "text")
-    if "wifi" in amenities.lower():
-        wifi = "yes"
-    else:
-        wifi = "no"
-
-    return wifi
-'''
-
 def next_page(driver):
     #the full XPath of the next page button
     element_path = "/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[3]/div/div/div/nav/div/a[5]"
@@ -305,12 +265,13 @@ def rating_bar(property_df, travel_location, graph):
     x = np.array(properties)
     y = np.array(ratings)
     #uses the numpy arrays to plot a bar chart
-    graph[0,0].bar(x, y, color="red")
+    graph.bar(x, y, color="red")
 
     #sets various visual features for the bar chart
-    graph[0,0].set_title(f"Average ratings of each property in {travel_location}")
-    graph[0,0].set_xlabel("Property")
-    graph[0,0].set_ylabel("Average rating")
+    graph.set_title(f"Average ratings of each property in {travel_location}")
+    graph.set_xlabel("Property")
+    graph.set_ylabel("Average rating")
+    graph.set_xticks(x, labels=properties, rotation=270) #(GeeksForGeeks, 2022)
 
     #returns the bar chart
     return graph
@@ -326,20 +287,24 @@ def price_bar(property_df, travel_location, graph):
     y = np.array(prices)
 
     #uses the numpy arrays to plot a bar chart
-    graph[0,1].bar(x, y, color="green")
+    graph.bar(x, y, color="green")
     #sets various visual features for the bar chart
-    graph[0,1].set_title(f"Prices of properties in {travel_location}")
-    graph[0,1].set_xlabel("Property")
-    graph[0,1].set_ylabel("Price per night (£)")
+    graph.set_title(f"Prices of properties in {travel_location}")
+    graph.set_xlabel("Property")
+    graph.set_xticks(x, labels=properties, rotation=270)
+    graph.set_ylabel("Price per night (£)")
     #returns the bar chart
     return graph
 
 
 def rating_num_pie(property_df, travel_location, graph):
+
+    slice_num = 10
+
     #gets the data from column 0 and assigns it to a list variable
-    properties = property_df.iloc[0:10+1, 0]
+    properties = property_df.iloc[0:slice_num+1, 0]
     #gets the data from the column called "number_of_ratings" and assigns it to the ratings variable as a list
-    rating_counts = property_df.loc[0:10, "number_of_ratings"]
+    rating_counts = property_df.loc[0:slice_num, "number_of_ratings"]
 
     #creates a numpy array for the number of ratings
     x = np.array(rating_counts)
@@ -351,13 +316,9 @@ def rating_num_pie(property_df, travel_location, graph):
         label.append((properties[i], rating_counts[i]))
 
     #creates a pie chart from this data
-    graph[1,0].pie(x, labels=label)
-    graph[1,0].set_title("Number of reviews of each property")
+    graph.pie(x, labels=label)
+    graph.set_title("Number of reviews of each property")
     
     return graph
-
-    
-
-
 
 main()
