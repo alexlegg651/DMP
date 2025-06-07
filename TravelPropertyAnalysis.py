@@ -108,6 +108,17 @@ def save_data(data, travel_location):
     #creates a dataframe out of the data retrieved that was stored in a dictionary of lists
     property_df = pd.DataFrame(data) #(pandas, n.d.)
 
+    #declares a new string variable filename_location
+    filename_location = ""
+    #iterates through the travel_location string (input by user)
+    for char in travel_location:
+        #replaces any spaces with "_" in the travel_location so the filename has no spaces
+        if char == " ":
+            filename_location += "_"
+        #if char is not a space, concatenates char to the string as normal
+        else:
+            filename_location += char
+
     #generates a filename based off of the location that the user input
     filename = f"{travel_location}_properties.xlsx"
     #exports the dataframe to an excel file of the filename generated
