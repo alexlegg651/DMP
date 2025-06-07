@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,14 +21,23 @@ def main():
 
     #prevents the web browser GUI from appearing to the user
     website_config.add_argument("--headless") #(Meshi, 2020)
+    
+    #loops through setting up a web driver until data is successfully accessed through it
+    data_found = False
+    while data_found == False:
+        #sets up webdriver and opens an empty Edge window and assigns this to the 'driver' webdriver variable
+        driver = webdriver.Edge(options=website_config) #(Selenium, 2025)
+        #navigates to the stated URL in the Edge window
+        driver.get("https://www.airbnb.co.uk")
+        driver.maximize_window()
 
-    #sets up webdriver and opens an empty Edge window and assigns this to the 'driver' webdriver variable
-    driver = webdriver.Edge(options=website_config) #(Selenium, 2025)
-    #navigates to the stated URL in the Edge window
-    driver.get("https://www.airbnb.co.uk")
-    search_for_properties(driver, travel_location)
-    #calls a function that inspects elements of the web page and retrieves data from them to be analysed
-    property_data = get_data(driver, website_config)
+        #calls a subroutine that automatically searches for the location input by the user on the Airbnb website
+        search_for_properties(driver, travel_location)
+        #calls a function that inspects elements of the web page and retrieves data from them to be analysed
+        property_data = get_data(driver, website_config)
+        #checks if any data was found
+        if property_data != "": data_found = True
+    
     
     #calls a function that saves the data as a dataframe into an excel file
     data_file = save_data(property_data, travel_location)
@@ -72,20 +81,25 @@ def get_data(driver, website_config):
     number_of_ratings = [] 
     price_per_night = []
 
+    #accept_preferences(driver)
     #loops through the steps for the set number of pages
     for page in range(1, 3):
         #loops through the steps for collecting data for each property
         for result_index in range(1, 18):
             #gets the following data for the current property
             name_value = get_property_name(driver, result_index)
-            rating_value, rating_num = get_ratings_and_reviews(driver, result_index)
-            price = get_price(driver, result_index)
+            #checks to see if name of property is found, if not moves onto the next property
+            if name_value != "":
+                rating_value, rating_num = get_ratings_and_reviews(driver, result_index)
+                price = get_price(driver, result_index)
 
-            #appends the collected data to lists of the data for each type of data for each property
-            name.append(name_value)
-            average_rating.append(rating_value)
-            number_of_ratings.append(rating_num)
-            price_per_night.append(price)
+                #appends the collected data to lists of the data for each type of data for each property
+                name.append(name_value)
+                average_rating.append(rating_value)
+                number_of_ratings.append(rating_num)
+                price_per_night.append(price)
+            elif name_value == "" and page == 1 and result_index == 1:
+                return ""
 
         #selects next page button to show more property listings
         next_page(driver)
@@ -98,6 +112,11 @@ def get_data(driver, website_config):
         "price_per_night": price_per_night,
     }
     return properties
+
+def accept_preferences(driver):
+    path = "/html/body/div[5]/div/div/div[1]/div/div[2]/section/div/div[2]/div[1]/button"
+    element = get_element(driver, path)
+    element.click()
 
 def save_data(data, travel_location):
     #creates a dataframe out of the data retrieved that was stored in a dictionary of lists
@@ -149,16 +168,18 @@ def analyse_data(property_df, travel_location):
 #function that causes the program to wait until a specified element has been loaded on the web page before trying to access it to prevent an error
 def get_element(driver, path):
     #creates a WebDriverWait
-    wait = WebDriverWait(driver, 5)
+    wait = WebDriverWait(driver, 3)
 
     #form of error-handling - if element is not found, error is caught and moves onto the next element
+    element = ""
     try:
         #finds the element on the web page but waits until it is located before trying to assign it to a variable (element)
-        element = wait.until(expected_conditions.visibility_of_element_located((By.XPATH, path)))
-    except TimeoutException:
-        #timeout may occur if no element is found with this XPath and so no value is returned
-        return ""
-    #WebElement value is returned if found
+        element = wait.until(expected_conditions.element_to_be_clickable((By.XPATH, path)))
+    except (TimeoutException, StaleElementReferenceException) as e:
+        #timeout may occur if no element is found with this XPath and so "" is returned
+        element = ""
+
+    #WebElement value or "" is returned depending on if the element was found or not
     return element
 
 #function that takes the driver variable and loop index as parameters then uses them to get the name of the current property and return it
@@ -167,60 +188,63 @@ def get_property_name(driver, result_index):
     #the XPath of the element containing the name of the property
     path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[3]/span"
 
-    #uses a loop that continues trying to find the element if it is not initially found
-    name_element = ''
-    attempts = 0
-    while attempts < 3 and name_element == '':
-        #the element containing the name value of the property is found and assigned to a variable after waiting for it to be located (calls function to do this)
-        name_element = get_element(driver, path)
-        attempts += 1
+    #the element containing the name value of the property is found and assigned to a variable after waiting for it to be located (calls function to do this)
+    name_element = get_element(driver, path)
         
     if name_element != '':
         #gets the text value of the name element using the getattr Python function
         name_value = getattr(name_element, "text")
 
-    #cuts the property name down to a finite number of characters to ensure it is readable in hte visualisations but still useful
-    short_name = ""
-    for char in range(0, len(name_value)):
-        if char < 16:
-            short_name += name_value[char]
-    short_name += "..."
+        #cuts the property name down to a finite number of characters to ensure it is readable in hte visualisations but still useful
+        short_name = ""
+        for char in range(0, len(name_value)):
+            if char < 16:
+                short_name += name_value[char]
+        short_name += "..."
 
-    #returns the name value of the property so it can be stored
-    return short_name
+        #returns the name value of the property so it can be stored
+        return short_name
+    else: 
+        return ""
 
 #function that takes the driver variable and loop index as parameters and uses them to get and return data about ratings and reviews
 def get_ratings_and_reviews(driver, result_index):
     
     #the XPath for the element containing the average rating and number of reviews
     path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[7]/span/span[3]"
+
     #the element containing the average rating and number of reviews is found and assigned after waiting for it to be located (calls function above)
     rating_element = get_element(driver, path)
     
-    #calls a function to get the text value of the element if it exists and splits the string containing the average rating and number of reviews and assigns each part to a different variable
-    string_rating_value, string_number_of_ratings = try_rating_review(rating_element)
-    
-    #checks if string_rating_value has a meaningful value
-    if string_rating_value != "":
-        #casts the average rating string to a float
-        rating_value = float(string_rating_value)
-    else:
-        #if there is no value, rating_value is assigned no value to prevent error
-        rating_value = string_rating_value
-    
-    #checks if string_number_of_ratings has a meaningful value
-    if string_number_of_ratings != "":
-        #removes the brackets from either side of the number of ratings string
-        string_number_of_ratings = string_number_of_ratings.split("(")[1]
-        string_number_of_ratings = string_number_of_ratings.split(")")[0]
-        #casts the number of ratings string to an integer
-        number_of_ratings = int(string_number_of_ratings)
-    else:
-        #if there is no value, number_of_ratings is assigned no value to prevent error
-        number_of_ratings = string_number_of_ratings
+    #checks if element for ratings is found
+    if rating_element != "":
+        #calls a function to get the text value of the element if it exists and splits the string containing the average rating and number of reviews and assigns each part to a different variable
+        string_rating_value, string_number_of_ratings = try_rating_review(rating_element)
+        
+        #checks if string_rating_value has a meaningful value
+        if string_rating_value != "":
+            #casts the average rating string to a float
+            rating_value = float(string_rating_value)
+        else:
+            #if there is no value, rating_value is assigned no value to prevent error
+            rating_value = string_rating_value
+        
+        #checks if string_number_of_ratings has a meaningful value
+        if string_number_of_ratings != "":
+            #removes the brackets from either side of the number of ratings string
+            string_number_of_ratings = string_number_of_ratings.split("(")[1]
+            string_number_of_ratings = string_number_of_ratings.split(")")[0]
+            #casts the number of ratings string to an integer
+            number_of_ratings = int(string_number_of_ratings)
+        else:
+            #if there is no value, number_of_ratings is assigned no value to prevent error
+            number_of_ratings = string_number_of_ratings
 
-    #returns the values so they can be stored
-    return rating_value, number_of_ratings
+        #returns the values so they can be stored
+        return rating_value, number_of_ratings
+    else:
+        #if no element is found, 0 values are returned
+        return 0, 0
 
 def try_rating_review(rating_element):
 
@@ -244,25 +268,31 @@ def try_rating_review(rating_element):
 def get_price(driver, result_index):
     #the XPath for the element containing the price per night
     path = f"/html/body/div[5]/div/div/div[1]/div/div/div[2]/div[1]/main/div[2]/div/div[2]/div/div/div/div/div/div[{result_index}]/div/div[2]/div/div/div/div/div/div[2]/div[6]/div[2]/div/div/span[1]"
+
     #calls a function to get the element after waiting for it to be loaded
     price_element = get_element(driver, path)
 
-    #gets the price text value of the price_element
-    string_price_value = getattr(price_element, "text")
-    #removes the extra chars of the string until just the number of the price in £ remains
-    string_price_value = string_price_value.split(" ")[0]
+    #checks if price element was found or not
+    if price_element != "":
+        #gets the price text value of the price_element
+        string_price_value = getattr(price_element, "text")
+        #removes the extra chars of the string until just the number of the price in £ remains
+        string_price_value = string_price_value.split(" ")[0]
 
-    #removes any characters that are not numerical digits that the string_price_value could contain
-    formatted_price_value = ""
-    for char in string_price_value:
-        #if current character is , or £ then these are not appended to the final formatted price value so this can be converted to a float
-        if char != "," and char != "£":
-            formatted_price_value += char
+        #removes any characters that are not numerical digits that the string_price_value could contain
+        formatted_price_value = ""
+        for char in string_price_value:
+            #if current character is , or £ then these are not appended to the final formatted price value so this can be converted to a float
+            if char != "," and char != "£":
+                formatted_price_value += char
 
-    #casts the string price value to a float
-    price_value = float(formatted_price_value)
+        #casts the string price value to a float
+        price_value = float(formatted_price_value)
 
-    return price_value
+        return price_value
+    else:
+        #if no element is found then 0 value is returned
+        return 0
 
 def next_page(driver):
     #the full XPath of the next page button
