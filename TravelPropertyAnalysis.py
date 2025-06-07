@@ -10,37 +10,29 @@ import matplotlib.pyplot as plt
 
 def main():
 
-    # #gets details about the planned travel from the user
-    # travel_location = user_input()
+    #gets details about the planned travel from the user
+    travel_location = user_input()
 
-    # #allows application of certain options for how the web browser will function
-    # website_config = Options()
+    #allows application of certain options for how the web browser will function
+    website_config = Options()
 
-    # #prevents the web browser from automatically closing at the end of execution
-    # website_config.add_experimental_option("detach", True)
+    #prevents the web browser from automatically closing at the end of execution
+    website_config.add_experimental_option("detach", True)
 
-    # #prevents the web browser GUI from appearing to the user
-    # website_config.add_argument("--headless") #(Meshi, 2020)
+    #prevents the web browser GUI from appearing to the user
+    website_config.add_argument("--headless") #(Meshi, 2020)
 
-    # #website_config.add_experimental_option("excludeSwitches", ["enable-logging"])
-    # #website_config.add_argument("--disable-gpu")
-    # #website_config.add_argument("--no-sandbox")
+    #website_config.add_experimental_option("excludeSwitches", ["enable-logging"])
+    #website_config.add_argument("--disable-gpu")
+    #website_config.add_argument("--no-sandbox")
 
-    # #sets up webdriver and opens an empty Edge window and assigns this to the 'driver' webdriver variable
-    # driver = webdriver.Edge(options=website_config) #(Selenium, 2025)
-    # #navigates to the stated URL in the Edge window
-    # driver.get("https://www.airbnb.co.uk")
-    # search_for_properties(driver, travel_location)
-    # #calls a function that inspects elements of the web page and retrieves data from them to be analysed
-    # property_data = get_data(driver, website_config)
-
-    property_data = {
-        "name": ["barry", "cork", "essex"],
-        "average_rating": [1, 2, 3],
-        "number_of_reviews": [4, 5, 6],
-        "price_per_night": [7, 8, 9]
-    }
-    travel_location = "new sheet"
+    #sets up webdriver and opens an empty Edge window and assigns this to the 'driver' webdriver variable
+    driver = webdriver.Edge(options=website_config) #(Selenium, 2025)
+    #navigates to the stated URL in the Edge window
+    driver.get("https://www.airbnb.co.uk")
+    search_for_properties(driver, travel_location)
+    #calls a function that inspects elements of the web page and retrieves data from them to be analysed
+    property_data = get_data(driver, website_config)
 
     #declares the filename to be used to store all the property data about different locations
     filename = "property_data.xlsx"
@@ -48,7 +40,7 @@ def main():
     data_sheet = save_data(property_data, travel_location, filename)
     #calls a function reads the contents of the file containing the data into a dataframe
     property_df = load_data(filename, data_sheet)
-    property_df = load_data(data_file)
+    
     #calls a subroutine to provide analysis of the loaded property data
     analyse_data(property_df, travel_location)
     
