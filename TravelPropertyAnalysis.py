@@ -114,7 +114,7 @@ def get_data(driver, website_config):
     }
     return properties
 
-def save_data(data, travel_location):
+def save_data(data, travel_location, filename):
     #creates a dataframe out of the data retrieved that was stored in a dictionary of lists
     property_df = pd.DataFrame(data) #(pandas, n.d. -b)
 
