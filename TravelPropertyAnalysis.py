@@ -208,9 +208,16 @@ def get_price(driver, result_index):
     string_price_value = getattr(price_element, "text")
     #removes the extra chars of the string until just the number of the price in £ remains
     string_price_value = string_price_value.split(" ")[0]
-    string_price_value = string_price_value.split("£")[1]
+
+    #removes any characters that are not numerical digits that the string_price_value could contain
+    formatted_price_value = ""
+    for char in string_price_value:
+        #if current character is , or £ then these are not appended to the final formatted price value so this can be converted to a float
+        if char != "," and char != "£":
+            formatted_price_value += char
+
     #casts the string price value to a float
-    price_value = float(string_price_value)
+    price_value = float(formatted_price_value)
 
     return price_value
 
