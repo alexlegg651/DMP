@@ -86,7 +86,7 @@ def get_data(driver, website_config):
 
     #accept_preferences(driver)
     #loops through the steps for the set number of pages
-    for page in range(1, 3):
+    for page in range(1, 2):
         #loops through the steps for collecting data for each property
         for result_index in range(1, 18):
             #gets the following data for the current property
@@ -158,7 +158,7 @@ def analyse_data(property_df, travel_location):
     print(property_df.describe())
 
     #sets up 3 areas in a single window for individual graphs to be displayed using matplotlib library
-    figure, graph = plt.subplots(1, 3, figsize=(16, 4)) #(Bing Writer, 2025)
+    figure, graph = plt.subplots(1, 3, figsize=(15, 7)) #(Bing Writer, 2025)
 
     #calls various functions to create and return various graphs
     graph[0] = rating_bar(property_df, travel_location, graph[0])
