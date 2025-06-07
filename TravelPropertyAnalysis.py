@@ -43,7 +43,8 @@ def main():
     data_file = save_data(property_data, travel_location)
     
     #calls a function reads the contents of the file containing the data into a dataframe
-    property_df = load_data(data_file)
+    property_df = load_data(filename, data_sheet)
+    
     #calls a subroutine to provide analysis of the loaded property data
     analyse_data(property_df, travel_location)
     
@@ -113,36 +114,30 @@ def get_data(driver, website_config):
     }
     return properties
 
-def accept_preferences(driver):
-    path = "/html/body/div[5]/div/div/div[1]/div/div[2]/section/div/div[2]/div[1]/button"
-    element = get_element(driver, path)
-    element.click()
-
 def save_data(data, travel_location):
     #creates a dataframe out of the data retrieved that was stored in a dictionary of lists
     property_df = pd.DataFrame(data) #(pandas, n.d. -b)
 
     #declares a new string variable filename_location
-    filename_location = ""
+    sheet_name = ""
     #iterates through the travel_location string (input by user)
     for char in travel_location:
         #replaces any spaces with "_" in the travel_location so the filename has no spaces
         if char == " ":
-            filename_location += "_"
+            sheet_name += "_"
         #if char is not a space, concatenates char to the string as normal
         else:
-            filename_location += char
+            sheet_name += char
+    sheet_name += "_properties"
 
-    #generates a filename based off of the location that the user input
-    filename = f"{travel_location}_properties.xlsx"
-    #exports the dataframe to an excel file of the filename generated
-    property_df.to_excel(filename, sheet_name=f"{travel_location}_properties", index=False)
-    return filename
+    #exports the dataframe to an excel file of the filename generated - stores the data for each new location in a new sheet in the 1 excel file
+    with pd.ExcelWriter(filename, engine="openpyxl", mode="a", if_sheet_exists="replace") as data_writer:
+        #saves the data in a new excel sheet with name sheet_name - all property data stored in the same Excel file in separate sheets
+        property_df.to_excel(data_writer, sheet_name=sheet_name, index=False)
+    return sheet_name
 
-#function that reads data from an excel file and returns a dataframe produced from this data
-def load_data(data_file):
-    #reads data from the excel file with filename data_file
-    df = pd.read_excel(data_file)
+def load_data(filename, data_sheet):
+    df = pd.read_excel(filename, sheet_name=data_sheet)
     return df
 
 #subroutine that initialises different visualisations of the data provided
