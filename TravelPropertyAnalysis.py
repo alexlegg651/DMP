@@ -7,6 +7,7 @@ from selenium.common.exceptions import TimeoutException, StaleElementReferenceEx
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def main():
 
@@ -38,9 +39,10 @@ def main():
         #checks if any data was found
         if property_data != "": data_found = True
     
-    
+    #declares a common filename to be used to store data for each location entered by the user, where each location is stored on separate sheets
+    filename = "property_data.xlsx"
     #calls a function that saves the data as a dataframe into an excel file
-    data_file = save_data(property_data, travel_location)
+    data_sheet = save_data(property_data, travel_location, filename)
     
     #calls a function reads the contents of the file containing the data into a dataframe
     property_df = load_data(filename, data_sheet)
@@ -129,11 +131,18 @@ def save_data(data, travel_location, filename):
         else:
             sheet_name += char
     sheet_name += "_properties"
+    
+    #checks if the file already exists and sets the file open mode accordingly
+    if os.path.exists("property_data.xlsx"):
+        #sets up a file writer to write the data collected to an excel file using the file open mode determined above - if a sheet with the same name exists already, it is replaced with a new one
+        with pd.ExcelWriter(filename, engine="openpyxl", mode="a", if_sheet_exists="replace") as data_writer:
+            #saves the data in a new excel sheet with name sheet_name - all property data stored in the same Excel file in separate sheets
+            property_df.to_excel(data_writer, sheet_name=sheet_name, index=False)
+    else:
+        with pd.ExcelWriter(filename, engine="openpyxl", mode="w") as data_writer:
+            #saves the data in a new excel file and sheet
+            property_df.to_excel(data_writer, sheet_name=sheet_name, index=False)
 
-    #exports the dataframe to an excel file of the filename generated - stores the data for each new location in a new sheet in the 1 excel file
-    with pd.ExcelWriter(filename, engine="openpyxl", mode="a", if_sheet_exists="replace") as data_writer:
-        #saves the data in a new excel sheet with name sheet_name - all property data stored in the same Excel file in separate sheets
-        property_df.to_excel(data_writer, sheet_name=sheet_name, index=False)
     return sheet_name
 
 def load_data(filename, data_sheet):
