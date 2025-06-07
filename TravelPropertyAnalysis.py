@@ -8,11 +8,15 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import tkinter as tk
 
 def main():
+    #creates the graphical user interface (GUI) for the user to interact with
+    window = create_window()
 
-    #gets details about the planned travel from the user
-    travel_location = user_input()
+    window.mainloop()
+    
+def initiate(travel_location):
 
     #allows application of certain options for how the web browser will function
     website_config = Options()
@@ -22,7 +26,7 @@ def main():
 
     #prevents the web browser GUI from appearing to the user
     website_config.add_argument("--headless") #(Meshi, 2020)
-    
+
     #loops through setting up a web driver until data is successfully accessed through it
     data_found = False
     while data_found == False:
@@ -60,7 +64,7 @@ def user_input():
 def search_for_properties(driver, location):
 
     #finds the destination search element by its element ID (found by manually inspecting the element)
-    dest_search_element = driver.find_element(by=By.ID, value="bigsearch-query-location-input") #(GeeksForGeeks, 2024a)
+    dest_search_element = driver.find_element(by=By.ID, value="bigsearch-query-location-input") #(GeeksForGeeks, 2024d)
 
     #due to interaction with element, the page goes through changes so must wait before attempting to interact with the element again to prevent interaction with element while it is still stale
     wait = WebDriverWait(driver, 5)
@@ -70,7 +74,7 @@ def search_for_properties(driver, location):
     dest_search_element.send_keys(location)
 
     #finds the search button element using its XPATH instead of ID (doesn't have an ID) - XPATH syntax found through use of Microsoft Copilot AI
-    search_button_element = driver.find_element(by=By.XPATH, value="//*[contains(@data-testid, 'structured-search-input-search-button')]") #(GeeksForGeeks, 2024b)
+    search_button_element = driver.find_element(by=By.XPATH, value="//*[contains(@data-testid, 'structured-search-input-search-button')]") #(GeeksForGeeks, 2024e)
     
     #executes the "click" functionality on the button element found above
     search_button_element.click()
@@ -372,5 +376,71 @@ def rating_num_pie(property_df, travel_location, graph):
     graph.set_title("Number of reviews of each property")
     
     return graph
+
+#deals with establishing the GUI for the user to interact with
+#creates the window to host the GUI
+def create_window():
+    window = tk.Tk()
+    window.geometry("400x150")
+    window.title("Airbnb Property Investigator")
+
+    #calls a subroutine to create a title label
+    create_title_label(window)
+    #calls a subroutine that creates a label to display the string "Location:"
+    create_location_label(window)
+    #calls a function to create an entry box for the user input location and returns an entry variable
+    location_input = create_location_input(window)
+    #calls a subroutine to create a button that when pressed gets the contents of the entry box - hence passing the entry variable as a parameter
+    create_search_button(window, location_input)
+
+    return window
+
+#creates a title label to display at the top of the window
+def create_title_label(window):
+    title_label = tk.Label(
+        window,
+        text = "Airbnb Property Investigator",
+        height = 1,
+        width = 25,
+        anchor = "center",
+        fg = "red",
+        font = ("Arial", 16)
+    )
+    title_label.place(x = 60, y = 10)
+
+#creates a label to display the string "Location:" in the GUI
+def create_location_label(window): #(GeeksForGeeks, 2024c)
+
+    location_label = tk.Label(
+        window, 
+        text = "Location:", 
+        height = 1,
+        width = 30,
+        anchor = "w"
+    )
+    #places the label at the x, y specified
+    location_label.place(x = 20, y = 70)
+
+#creates an entry box for the user to enter the location they want to collect data about in the GUI
+def create_location_input(window): #(GeeksForGeeks, 2024b)
+    location_input = tk.Entry(
+        window,
+        width = 30,
+    )
+
+    location_input.place(x = 100, y = 70)
+    return location_input
+
+#creates a button the user can use to initiate the data collection and analysis from the GUI
+def create_search_button(window, location_input): #(GeeksForGeeks, 2024a)
+    location_search = tk.Button( #
+        window,
+        height = 2,
+        width = 10,
+        text = "Search",
+        #sets the command to be executed upon button click - lambda used to prevent execution before pressing button (without lambda if command assigned a procedure that takes a parameter it is executed when button declared)
+        command = lambda: initiate(location_input.get()) #(Crawley, 2018)
+    )
+    location_search.place(x = 300, y = 60)
 
 main()
