@@ -53,13 +53,6 @@ def initiate(travel_location):
     
     #calls a subroutine to provide analysis of the loaded property data
     analyse_data(property_df, travel_location)
-    
-def user_input():
-    #gets input from the user of the destination for their planned travel
-    destination = str(input("Please enter a destination: "))
-
-    #returns the location as a string
-    return destination
 
 def search_for_properties(driver, location):
 
