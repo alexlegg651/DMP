@@ -39,7 +39,7 @@ def initiate(travel_location):
         #calls a subroutine that automatically searches for the location input by the user on the Airbnb website
         search_for_properties(driver, travel_location)
         #calls a function that inspects elements of the web page and retrieves data from them to be analysed
-        property_data = get_data(driver, website_config)
+        property_data = get_data(driver)
         #checks if any data was found
         if property_data != "": data_found = True
     
