@@ -74,7 +74,7 @@ def search_for_properties(driver, location):
 
 
 #a subroutine that inspects elements of the web and retrieves data from them
-def get_data(driver, website_config):
+def get_data(driver):
     #creates empty lists for each column heading of the dataframe (each different type of data of each property)
     name = []
     average_rating = []
